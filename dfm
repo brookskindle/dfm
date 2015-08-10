@@ -6,6 +6,7 @@ Author: Brooks Kindle
 """
 
 import argparse
+import json
 import os
 
 
@@ -78,6 +79,50 @@ def load_config():
         except:
             continue
 
+def add_command(opts):
+    """Runs the add command
+
+    Arguments:
+        opts    -   command line options
+    """
+    whitelist = 'dfm.whitelist'  # json file containing a list tracked files
+    whitelist_path = os.path.join(CONFIG_SETTINGS['folder'], whitelist)
+    dotfiles = {}
+    try:
+        with open(os.path.expanduser(whitelist_path)) as fd:
+            text = fd.read()
+            dotfiles = json.loads(text)  # create dictionary from json file
+    except:
+        pass  # no files are being monitored
+    new_dotfile = opts.dotfile
+    filename = os.path.basename(new_dotfile)
+    dotfile_path = os.path.abspath(os.path.expanduser(new_dotfile))
+    if filename in dotfiles:
+        print('{} is already being monitored'.format(filename))
+    else:
+        dotfiles[filename] = dotfile_path
+        with open(os.path.expanduser(whitelist_path), 'w') as fd:
+            json.dump(dotfiles, fd)
+
+def list_command(opts):
+    """Runs the list command
+
+    Arguments:
+        opts    -   command line options
+    """
+    whitelist = 'dfm.whitelist'  # json file containing a list tracked files
+    whitelist_path = os.path.join(CONFIG_SETTINGS['folder'], whitelist)
+    dotfiles = {}
+    try:
+        with open(os.path.expanduser(whitelist_path)) as fd:
+            text = fd.read()
+            dotfiles = json.loads(text)  # create dictionary from json file
+    except:
+        print('You aren\'t monitoring any files. (╯°□°）╯︵ ┻━┻')
+    else:
+        for key, value in dotfiles.items():
+            print("{} --> {}".format(key, value))
+
 def main():
     """Entry point of the program"""
     #
@@ -92,8 +137,8 @@ def main():
     subparsers = parser.add_subparsers(title='subcommands',
                                        description='valid subcommands',
                                        help='additional help')
-    subparsers.required = True  # require at least one command line argument
-    subparsers.dest = 'command'  # require at least one command line argument
+    subparsers.required = True  # require one command
+    subparsers.dest = 'command'  # require one command
 
     list_parser = subparsers.add_parser('list', help='list managed files')
     add_parser = subparsers.add_parser('add', help='add a file to be tracked')
@@ -104,10 +149,9 @@ def main():
     #
     # Based on what arguments were given, call the appropriate function.
     #
-    fptrs = {'add': lambda o:print('chosen add, dotfile={}'.format(o.dotfile)),
-             'list': lambda o:print('list has been chosen! all hail list'),
+    cmd_table = {'add': add_command, 'list': list_command,
              }
-    fptrs[opts.command](opts)
+    cmd_table[opts.command](opts)
 
 if __name__ == '__main__':
     main()
