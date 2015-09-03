@@ -8,6 +8,8 @@ Author: Brooks Kindle
 import argparse
 import json
 import os
+import pwd
+import shutil
 
 
 #
@@ -54,7 +56,7 @@ CONFIG_SETTINGS = {
 # configuration variable value. 
 #
 CONFIG_VALIDATION = {
-        'folder': lambda path: os.path.exists(path),
+        'folder': lambda path: os.path.exists(os.path.expanduser(path)),
         'whitelist': lambda fname: True,
         }
 
@@ -135,9 +137,19 @@ def add_command(opts):
     if filename in dotfiles:
         print('{} is already being monitored'.format(filename))
     else:
-        dotfiles[filename] = dotfile_path
-        with open(os.path.expanduser(whitelist_path), 'w') as fd:
-            json.dump(dotfiles, fd)
+        try:
+            print("dotfile_path={}\nCONFIG_SETTINGS={}".format(dotfile_path,
+                                                    CONFIG_SETTINGS['folder']))
+            shutil.copy(dotfile_path,
+                        os.path.expanduser(CONFIG_SETTINGS['folder']))
+            # compress home path for portability to other users
+            home_dir = pwd.getpwuid(os.getuid()).pw_dir
+            dotfile_path = "~" + dotfile_path[len(home_dir):]
+            dotfiles[filename] = dotfile_path
+            with open(os.path.expanduser(whitelist_path), 'w') as fd:
+                json.dump(dotfiles, fd)
+        except IOError as err:
+            print(err)
 
 def list_command(opts):
     """Runs the list command
