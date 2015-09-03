@@ -38,9 +38,44 @@ CONFIG_FILES = [
 # 
 # This would override the default value for the folder key.
 #
+# If you intend to modify or edit the default value for a config setting, make
+# sure to also add or modify the appropriate entry in the CONFIG_VALIDATION
+# variable.
+#
 CONFIG_SETTINGS = {
         'folder': '~/dotfiles/',
+        'whitelist': 'dfm.whitelist',
         }
+
+#
+# Validation checks for configuration settings. Each key in this dictionary
+# should also be a key in the CONFIG_SETTINGS variable. Each value in this
+# dictionary is a function to validate the correctness of the given
+# configuration variable value. 
+#
+CONFIG_VALIDATION = {
+        'folder': lambda path: os.path.exists(path),
+        'whitelist': lambda fname: True,
+        }
+
+
+def validate_config_settings():
+    """Makes sure that each config item contains a correct value.
+
+    This function will only properly return if none of the settings in
+    CONFIG_SETTINGS contain invalid values. If this is not true, then an error
+    message will be printed and exit will be called. We can't really continue
+    if there are errors in our config.
+    """
+    should_exit = False
+    for setting, value in CONFIG_SETTINGS.items():
+        if CONFIG_VALIDATION[setting](value) == False:
+            # This configuration value isn't correct
+            print("Error while processing configuration value. "
+                  "{} : {}".format(setting, value))
+            should_exit = True
+    if should_exit:
+        exit(1)
 
 
 def load_config_helper(fd):
@@ -85,8 +120,8 @@ def add_command(opts):
     Arguments:
         opts    -   command line options
     """
-    whitelist = 'dfm.whitelist'  # json file containing a list tracked files
-    whitelist_path = os.path.join(CONFIG_SETTINGS['folder'], whitelist)
+    whitelist_file = CONFIG_SETTINGS['whitelist']
+    whitelist_path = os.path.join(CONFIG_SETTINGS['folder'], whitelist_file)
     dotfiles = {}
     try:
         with open(os.path.expanduser(whitelist_path)) as fd:
@@ -129,6 +164,11 @@ def main():
     # Read config files
     #
     load_config()  
+
+    #
+    # Validate config values
+    #
+    validate_config_settings()
 
     #
     # Parse command line arguments.
