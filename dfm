@@ -183,17 +183,21 @@ def add_command(opts):
     Arguments:
         opts    -   command line options
     """
-    dotfile = expand_path(opts.dotfile)
-    folder = expand_path(CONFIG_SETTINGS['folder'])
+    src_file = compress_path(opts.dotfile)
+    save_name = opts.name if opts.name else os.path.basename(src_file)
+    dst_file = os.path.join(expand_path(CONFIG_SETTINGS['folder']), save_name)
     whitelist = load_whitelist()  # Get current files for whitelist
-    dotfile_basename = os.path.basename(dotfile)
-    if dotfile_basename in whitelist:
-        print('{} is already being monitored'.format(dotfile_basename))
+
+    if save_name in whitelist.keys():
+        print('{} already exists (and is monitoring {})'
+              ''.format(save_name, whitelist[save_name]))
+    elif src_file in whitelist.values():
+        print('{} is already being monitored.'.format(src_file))
     else:
         try:
-            shutil.copy(dotfile, folder)
+            shutil.copyfile(expand_path(src_file), dst_file)
             # compress home path for portability to other users
-            whitelist[dotfile_basename] = compress_path(dotfile)
+            whitelist[save_name] = compress_path(src_file)
             save_whitelist(whitelist)
         except IOError as err:
             print(err)
@@ -269,7 +273,10 @@ def main():
     list_parser = subparsers.add_parser('list', help='list managed files')
     add_parser = subparsers.add_parser('add',
                                        help='add a dotfile to be tracked')
-    add_parser.add_argument('dotfile')
+    add_parser.add_argument('dotfile', help='File to monitor')
+    add_parser.add_argument('name', nargs='?', const='',
+                            help='Name to monitor the dotfile as. If this is '
+                            'not specified, defaults to the name of the file.')
     remove_parser = subparsers.add_parser('remove',
                                           help='remove a tracked dotfile')
     remove_parser.add_argument('dotfile')
